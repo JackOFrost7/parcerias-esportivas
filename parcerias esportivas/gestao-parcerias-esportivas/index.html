@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestão de Parcerias Esportivas</title>
+  <meta name="description" content="App para centralizar calendário de jogos, ativações e entregáveis de contratos de patrocínio esportivo." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⚽</span>
+      <div>
+        <h1>Parcerias Esportivas</h1>
+        <p>Pipe de eventos, calendário e entregáveis em um só lugar</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn ghost" id="btn-export" title="Baixar dados em JSON">Exportar</button>
+      <label class="btn ghost" title="Carregar dados de um JSON">
+        Importar<input type="file" id="input-import" accept="application/json" hidden />
+      </label>
+      <button class="btn ghost" id="btn-reset" title="Restaurar dados de exemplo">Restaurar exemplo</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-view="board" role="tab">Quadro</button>
+    <button class="tab" data-view="calendar" role="tab">Calendário</button>
+    <button class="tab" data-view="dashboard" role="tab">Visão geral</button>
+    <button class="tab" data-view="deliverables" role="tab">Entregáveis</button>
+    <button class="tab" data-view="teams" role="tab">Times</button>
+    <button class="tab" data-view="ai" role="tab">✨ Contrato com IA</button>
+  </nav>
+
+  <main>
+    <!-- QUADRO (estilo Pipefy) -->
+    <section class="view active" id="view-board">
+      <div class="board-toolbar">
+        <div class="filters">
+          <input type="search" id="board-search" placeholder="Buscar cards…" aria-label="Buscar cards" />
+          <select id="filter-board-team" aria-label="Filtrar por time"></select>
+        </div>
+        <button class="btn primary" data-action="new-event" data-stage="todo">+ Novo card</button>
+      </div>
+      <div class="summary-chips" id="board-summary"></div>
+      <p class="muted small board-hint">Arraste os cards entre as fases. No celular, segure o card por um instante e arraste.</p>
+      <div class="board" id="board"></div>
+    </section>
+
+    <!-- VISÃO GERAL -->
+    <section class="view" id="view-dashboard">
+      <div class="stats" id="stats"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Próximos eventos</h2>
+            <button class="btn primary" data-action="new-event">+ Evento</button>
+          </div>
+          <ul class="list" id="upcoming"></ul>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Alertas de planejamento</h2>
+          </div>
+          <p class="muted small">Ativações precisam de pelo menos <strong id="lead-days"></strong> dias de antecedência.</p>
+          <ul class="list" id="alerts"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALENDÁRIO -->
+    <section class="view" id="view-calendar">
+      <div class="card">
+        <div class="card-head">
+          <div class="month-nav">
+            <button class="btn ghost icon" id="prev-month" aria-label="Mês anterior">‹</button>
+            <h2 id="month-label"></h2>
+            <button class="btn ghost icon" id="next-month" aria-label="Próximo mês">›</button>
+            <button class="btn ghost" id="today-btn">Hoje</button>
+          </div>
+          <div class="filters">
+            <select id="filter-team" aria-label="Filtrar por time"></select>
+            <button class="btn primary" data-action="new-event">+ Evento</button>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot game"></i>Jogo</span>
+          <span><i class="dot activation"></i>Ativação</span>
+          <span><i class="dot other"></i>Outro</span>
+        </div>
+        <div class="weekdays">
+          <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </div>
+    </section>
+
+    <!-- ENTREGÁVEIS -->
+    <section class="view" id="view-deliverables">
+      <div class="card">
+        <div class="card-head">
+          <h2>Entregáveis de contrato</h2>
+          <div class="filters">
+            <select id="filter-deliv-team" aria-label="Filtrar por time"></select>
+            <select id="filter-deliv-status" aria-label="Filtrar por status">
+              <option value="all">Todos</option>
+              <option value="pending">Pendentes</option>
+              <option value="done">Concluídos</option>
+            </select>
+            <button class="btn primary" data-action="new-deliverable">+ Entregável</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th></th><th>Entregável</th><th>Time</th><th>Prazo</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="deliverables"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMES -->
+    <section class="view" id="view-teams">
+      <div class="card-head page-head">
+        <h2>Times patrocinados</h2>
+        <button class="btn primary" data-action="new-team">+ Time</button>
+      </div>
+      <div class="teams" id="teams"></div>
+    </section>
+
+    <!-- CONTRATO COM IA -->
+    <section class="view" id="view-ai">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Importar contrato com IA</h2>
+            <p class="muted small ai-summary">Envie o contrato de patrocínio e o Claude identifica vigência, entregáveis e ativações. Você revisa tudo antes de entrar no app.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="ai-text">Texto do contrato</label>
+          <textarea id="ai-text" class="ai-textarea" placeholder="Cole aqui o texto do contrato…"></textarea>
+          <div class="ai-pdf-chip" id="ai-pdf-chip" hidden></div>
+        </div>
+        <div class="ai-input-actions">
+          <label class="btn ghost">📄 Enviar PDF ou TXT<input type="file" id="ai-file" accept="application/pdf,.pdf,text/plain,.txt" hidden /></label>
+          <button type="button" class="btn ghost" id="ai-sample">Usar contrato de exemplo</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn primary" id="ai-extract">✨ Extrair com IA</button>
+        </div>
+        <p class="ai-status" id="ai-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="card ai-result" id="ai-result" hidden></div>
+    </section>
+  </main>
+
+  <!-- MODAL -->
+  <dialog id="modal">
+    <form method="dialog" id="modal-form">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="modal-delete" hidden>Excluir</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="modal-cancel">Cancelar</button>
+        <button type="submit" class="btn primary" id="modal-save">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <footer class="footer">
+    Projeto de portfólio · dados fictícios · salvo localmente no navegador
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="board.js"></script>
+  <script src="app.js"></script>
+  <script src="sample-contract.js"></script>
+  <script src="ai.js"></script>
+</body>
+</html>
