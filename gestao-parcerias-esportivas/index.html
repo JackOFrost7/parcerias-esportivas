@@ -19,6 +19,8 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <span class="sync-status" id="sync-status" data-state="local">Modo local</span>
+      <button class="btn ghost" id="btn-login" hidden>Entrar</button>
       <button class="btn ghost" id="btn-export" title="Baixar dados em JSON">Exportar</button>
       <label class="btn ghost" title="Carregar dados de um JSON">
         Importar<input type="file" id="input-import" accept="application/json" hidden />
@@ -174,16 +176,35 @@
     </form>
   </dialog>
 
+  <!-- LOGIN (Supabase Auth) -->
+  <dialog id="login-modal">
+    <form id="login-form">
+      <h3>Entrar no banco do time</h3>
+      <p class="muted small">Com login, os dados ficam no Supabase e o time inteiro vê as mesmas informações em tempo real.</p>
+      <div class="field"><label for="login-email">E-mail</label><input id="login-email" name="email" type="email" autocomplete="username" required /></div>
+      <div class="field"><label for="login-password">Senha</label><input id="login-password" name="password" type="password" autocomplete="current-password" required /></div>
+      <p class="login-error" id="login-error" role="alert"></p>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="login-cancel">Cancelar</button>
+        <button type="submit" class="btn primary" id="login-submit">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast" role="status"></div>
 
   <footer class="footer">
-    Projeto de portfólio · dados fictícios · salvo localmente no navegador
+    Projeto de portfólio · dados fictícios · modo local no navegador ou banco compartilhado no Supabase
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="board.js"></script>
   <script src="app.js"></script>
   <script src="sample-contract.js"></script>
   <script src="ai.js"></script>
+  <script src="sync.js"></script>
 </body>
 </html>

@@ -34,6 +34,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -409,3 +410,25 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 input.invalid { border-color: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 25%, transparent); }
 .ai-actions { margin-top: 16px; }
 .ai-pdf-chip[hidden] { display: none; }
+
+/* =========================================================
+   Sincronização / login
+   ========================================================= */
+.topbar-actions { align-items: center; }
+.sync-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .8rem; font-weight: 500; color: var(--muted); padding: 0 4px;
+}
+.sync-status::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+}
+.sync-status[data-state="online"] { color: var(--ok); }
+.sync-status[data-state="online"]::before { background: var(--ok); }
+.sync-status[data-state="saving"]::before,
+.sync-status[data-state="loading"]::before { background: var(--warn); animation: sync-pulse 1s ease-in-out infinite; }
+.sync-status[data-state="error"] { color: var(--danger); }
+.sync-status[data-state="error"]::before { background: var(--danger); }
+@keyframes sync-pulse { 50% { opacity: .3; } }
+#login-modal h3 { margin-bottom: 6px; font-size: 1.1rem; }
+#login-modal p.muted { margin: 0 0 16px; }
+.login-error { color: var(--danger); font-size: .85rem; min-height: 1.2em; margin: 0 0 4px; }

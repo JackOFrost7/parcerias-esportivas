@@ -33,11 +33,16 @@ function normalize(s) {
 }
 
 function saveState() {
-  try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(state)); } catch (_) {}
+  // Com login no Supabase, as alterações vão para o banco (sync.js);
+  // sem login, ficam no navegador.
+  if (window.Remote?.active) Remote.sync();
+  else try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(state)); } catch (_) {}
   render();
 }
 
-const uid = (p) => p + Math.random().toString(36).slice(2, 9);
+// IDs únicos (também usados como chave primária no banco)
+const uid = (p = "") => globalThis.crypto?.randomUUID?.() ||
+  p + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 
 /* ---------- Datas ---------- */
 function parseDate(str) {
