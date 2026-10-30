@@ -1,0 +1,305 @@
+{
+  "name": "Resumo semanal das parcerias esportivas",
+  "nodes": [
+    {
+      "id": "b6a1c1a0-0001-4c1a-9a01-000000000001",
+      "name": "Toda segunda às 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b6a1c1a0-0002-4c1a-9a01-000000000002",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "b6a1c1a0-0003-4c1a-9a01-000000000003",
+      "name": "Configurações",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "supabase_url",
+              "type": "string",
+              "value": "https://pwakqfuvrsmcrflnpnee.supabase.co"
+            },
+            {
+              "id": "c2",
+              "name": "email_to",
+              "type": "string",
+              "value": "seu-email@exemplo.com"
+            },
+            {
+              "id": "c3",
+              "name": "email_from",
+              "type": "string",
+              "value": "Parcerias Esportivas <seu-email@exemplo.com>"
+            },
+            {
+              "id": "c4",
+              "name": "app_url",
+              "type": "string",
+              "value": "https://jackofrost7.github.io/parcerias-esportivas/"
+            },
+            {
+              "id": "c5",
+              "name": "anthropic_model",
+              "type": "string",
+              "value": "claude-sonnet-5-5"
+            },
+            {
+              "id": "c6",
+              "name": "planning_lead_days",
+              "type": "number",
+              "value": 45
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b6a1c1a0-0004-4c1a-9a01-000000000004",
+      "name": "Buscar dados no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.supabase_url }}/rest/v1/rpc/weekly_digest",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "parceriasSupabase",
+          "name": "Supabase - Parcerias (service_role)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "b6a1c1a0-0005-4c1a-9a01-000000000005",
+      "name": "Montar pedido para o Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Monta o pedido para o Claude a partir dos dados do Supabase\nconst d = $input.first().json;\nconst cfg = $('Configurações').first().json;\n\nconst counts = {\n  alertas: d.planning_alerts.length,\n  atrasados: d.late_deliverables.length,\n  vencendo: d.deliverables_due_7_days.length,\n  eventos: d.events_next_7_days.length,\n  contratos: d.contracts_ending_90_days.length,\n};\n\nconst system = [\n  'Você é assistente do time de marketing esportivo de uma marca patrocinadora.',\n  'Escreva o resumo semanal das parcerias esportivas em português do Brasil, para ser lido em 1 minuto.',\n  'Regras:',\n  '- Use SOMENTE os dados do JSON. Não invente eventos, datas, nomes ou números.',\n  '- Responda apenas com um fragmento HTML usando as tags <h3>, <p>, <ul>, <li> e <strong>. Sem <html>, <body>, estilos ou markdown.',\n  '- Seções, nesta ordem: \"Prioridades da semana\", \"Agenda dos próximos 7 dias\", \"Entregáveis que vencem em breve\", \"Contratos a renovar\".',\n  '- Em \"Prioridades da semana\", liste primeiro entregáveis atrasados e ativações que ainda não saíram do planejamento a menos de ' + cfg.planning_lead_days + ' dias, com o responsável quando houver.',\n  '- Datas no formato dd/mm (ex.: 05/11). Diga também \"hoje\", \"amanhã\" ou \"em N dias\" quando ajudar.',\n  '- Se uma seção não tiver itens, escreva uma frase curta dizendo que está tudo em dia.',\n  '- Feche com uma frase de próximo passo objetiva.',\n].join('\\n');\n\nreturn [{\n  json: {\n    counts,\n    digest: d,\n    body: {\n      model: cfg.anthropic_model,\n      max_tokens: 1500,\n      system,\n      messages: [{ role: 'user', content: 'Dados da semana (JSON):\\n' + JSON.stringify(d) }],\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "b6a1c1a0-0006-4c1a-9a01-000000000006",
+      "name": "Claude: escrever resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "parceriasAnthropic",
+          "name": "Anthropic API (x-api-key)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "b6a1c1a0-0007-4c1a-9a01-000000000007",
+      "name": "Montar e-mail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Monta o e-mail com o texto do Claude.\n// Se a IA falhar, envia um resumo simples gerado direto dos dados (o time não fica sem o aviso).\nconst cfg = $('Configurações').first().json;\nconst { digest: d, counts } = $('Montar pedido para o Claude').first().json;\nconst res = $input.first().json;\n\nconst esc = (s) => String(s ?? '').replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));\nconst br = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '';\n\n// Mantém só as tags permitidas, sem atributos (o HTML vem de um modelo, então é limpo antes de enviar)\nfunction sanitize(html) {\n  return html\n    .replace(/^\\s*\\x60\\x60\\x60(?:html)?|\\x60\\x60\\x60\\s*$/g, '')\n    .replace(/<(script|style)[\\s\\S]*?<\\/\\1>/gi, '')\n    .replace(/<\\/?([a-z0-9]+)[^>]*>/gi, (tag, name) =>\n      ['h3', 'p', 'ul', 'li', 'strong', 'em', 'br'].includes(name.toLowerCase())\n        ? tag.replace(/^<(\\/?)([a-z0-9]+)[^>]*>$/i, '<$1$2>') : '')\n    .trim();\n}\n\nfunction fallback() {\n  const list = (title, items, fmt) =>\n    '<h3>' + title + '</h3>' + (items.length ? '<ul>' + items.map((i) => '<li>' + fmt(i) + '</li>').join('') + '</ul>' : '<p>Tudo em dia.</p>');\n  return [\n    list('Entregáveis atrasados', d.late_deliverables, (i) => '<strong>' + esc(i.title) + '</strong> · ' + esc(i.team) + ' · atrasado há ' + i.days_late + ' dia(s)'),\n    list('Ativações para planejar', d.planning_alerts, (i) => '<strong>' + esc(i.title) + '</strong> · ' + esc(i.team) + ' · ' + br(i.date) + ' (em ' + i.days_left + ' dias)' + (i.owner ? ' · ' + esc(i.owner) : '')),\n    list('Agenda dos próximos 7 dias', d.events_next_7_days, (i) => br(i.date) + (i.time ? ' ' + i.time : '') + ' · <strong>' + esc(i.title) + '</strong> · ' + esc(i.team)),\n    list('Entregáveis que vencem em breve', d.deliverables_due_7_days, (i) => '<strong>' + esc(i.title) + '</strong> · ' + esc(i.team) + ' · ' + br(i.due)),\n    list('Contratos a renovar', d.contracts_ending_90_days, (i) => esc(i.team) + ' · termina em ' + br(i.contract_end) + ' (' + i.days_left + ' dias)'),\n  ].join('');\n}\n\nconst aiText = (res.content || []).find((c) => c.type === 'text')?.text;\nconst usedAI = !!aiText;\nconst body = usedAI ? sanitize(aiText) : fallback();\n\nconst chip = (n, label, color) =>\n  '<td style=\"padding:4px 12px 4px 0\"><span style=\"font:600 20px Arial;color:' + color + '\">' + n + '</span><br><span style=\"font:12px Arial;color:#64748b\">' + label + '</span></td>';\n\nconst html = '<div style=\"max-width:620px;margin:0 auto;font:15px/1.5 Arial,sans-serif;color:#17202a\">'\n  + '<h2 style=\"margin:0 0 4px\">⚽ Resumo semanal das parcerias</h2>'\n  + '<p style=\"margin:0 0 16px;color:#64748b\">Semana de ' + br(d.generated_on) + '</p>'\n  + '<table role=\"presentation\" style=\"margin-bottom:16px\"><tr>'\n  + chip(counts.atrasados, 'atrasados', '#dc2626')\n  + chip(counts.alertas, 'ativações p/ planejar', '#d97706')\n  + chip(counts.eventos, 'eventos em 7 dias', '#1d4ed8')\n  + chip(counts.vencendo, 'vencendo', '#0f766e')\n  + '</tr></table>'\n  + body\n  + (cfg.app_url ? '<p style=\"margin-top:24px\"><a href=\"' + esc(cfg.app_url) + '\" style=\"background:#1d4ed8;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none\">Abrir o app</a></p>' : '')\n  + '<p style=\"margin-top:24px;font-size:12px;color:#94a3b8\">Gerado automaticamente pelo n8n com dados do Supabase'\n  + (usedAI ? ' e texto do Claude.' : '. A IA estava indisponível, então este é o resumo simples.') + '</p>'\n  + '</div>';\n\nconst urgent = counts.atrasados + counts.alertas;\nreturn [{\n  json: {\n    subject: 'Parcerias esportivas · semana de ' + br(d.generated_on) + (urgent ? ' · ' + urgent + ' ponto(s) de atenção' : ' · tudo em dia'),\n    html,\n    used_ai: usedAI,\n  },\n}];"
+      }
+    },
+    {
+      "id": "b6a1c1a0-0008-4c1a-9a01-000000000008",
+      "name": "Enviar e-mail ao time",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        100
+      ],
+      "parameters": {
+        "fromEmail": "={{ $('Configurações').first().json.email_from }}",
+        "toEmail": "={{ $('Configurações').first().json.email_to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "parceriasSmtp",
+          "name": "SMTP (e-mail)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Toda segunda às 8h": {
+      "main": [
+        [
+          {
+            "node": "Configurações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Configurações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configurações": {
+      "main": [
+        [
+          {
+            "node": "Buscar dados no Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar dados no Supabase": {
+      "main": [
+        [
+          {
+            "node": "Montar pedido para o Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar pedido para o Claude": {
+      "main": [
+        [
+          {
+            "node": "Claude: escrever resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: escrever resumo": {
+      "main": [
+        [
+          {
+            "node": "Montar e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar e-mail": {
+      "main": [
+        [
+          {
+            "node": "Enviar e-mail ao time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

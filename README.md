@@ -30,6 +30,7 @@ Em times de marketing que cuidam de vários patrocínios ao mesmo tempo, as info
 - **Calendário mensal** com jogos, ativações e outros eventos, filtrável por time
 - **Entregáveis de contrato** com checklist, prazo e status (pendente, vencendo, atrasado, concluído)
 - **Página por time** com modalidade, contato, fim de contrato (aviso de renovação), progresso dos entregáveis e links para documentos e fotos
+- **🔁 Automação n8n**: toda segunda às 8h, o time recebe por e-mail um resumo da semana escrito pelo Claude com dados do Supabase (prioridades, agenda, entregáveis e renovações). Veja [`n8n/`](n8n/README.md)
 - **Banco compartilhado (Supabase/PostgreSQL)** com login, edição em tempo real e auditoria de quem alterou cada registro
   - Sem login, o app funciona em modo local (dados no navegador)
 - Criar, editar e excluir eventos, entregáveis e times
@@ -40,6 +41,7 @@ Em times de marketing que cuidam de vários patrocínios ao mesmo tempo, as info
 
 - HTML, CSS e JavaScript puro — sem frameworks e sem build
 - **Supabase**: PostgreSQL, Auth, Row Level Security e Realtime
+- **n8n**: agendamento, chamadas REST ao Supabase e à Claude API, e envio de e-mail
 - `localStorage` para o modo local
 - **Claude API** (Messages API com *tool use* e leitura nativa de PDF)
 - Função serverless em Node.js (`api/extract-contract.js`), compatível com Vercel
@@ -107,6 +109,7 @@ npm test                  # testes do backend com API simulada
 ├── sample-contract.js       # contrato fictício + resultado do modo demo
 ├── supabase/schema.sql      # tabelas, índices, RLS, triggers de auditoria e views
 ├── supabase/seed.sql        # dados de exemplo com datas relativas a hoje
+├── n8n/resumo-semanal.json  # fluxo do n8n: resumo semanal por e-mail com IA
 ├── api/extract-contract.js  # backend: prompt, esquema da ferramenta, validação
 ├── dev-server.js            # servidor local (app + API), sem dependências
 └── tests/                   # testes do backend
@@ -131,6 +134,8 @@ Views prontas para relatórios (podem ser consultadas no SQL Editor ou por autom
 | `v_deliverables_status` | Cada entregável com status calculado: atrasado, vencendo, pendente, concluído |
 | `v_planning_alerts` | Ativações que ainda não saíram do planejamento e estão a menos de 45 dias |
 | `v_team_summary` | Por time: % de entregáveis concluídos, atrasados, próximo evento e dias até o fim do contrato |
+
+A função `weekly_digest()` junta essas views num único JSON, que alimenta a automação do n8n.
 
 ```sql
 -- Exemplo: times com entregáveis atrasados

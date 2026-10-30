@@ -187,3 +187,76 @@ begin
     end loop;
   end if;
 end $$;
+
+-- ---------- Resumo semanal (usado pela automação do n8n) ----------
+-- Uma chamada devolve tudo o que o resumo precisa, em JSON:
+--   POST /rest/v1/rpc/weekly_digest
+
+create or replace function public.weekly_digest()
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'generated_on', public.local_today(),
+
+    'planning_alerts', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'title', a.title, 'team', a.team, 'date', a.date,
+               'days_left', a.days_left, 'stage', a.stage, 'owner', a.owner)
+             order by a.date)
+      from public.v_planning_alerts a), '[]'::jsonb),
+
+    'late_deliverables', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'title', s.title, 'team', s.team, 'due', s.due, 'days_late', -s.days_left)
+             order by s.due)
+      from public.v_deliverables_status s
+      where s.status = 'atrasado'), '[]'::jsonb),
+
+    'deliverables_due_7_days', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'title', s.title, 'team', s.team, 'due', s.due, 'days_left', s.days_left)
+             order by s.due)
+      from public.v_deliverables_status s
+      where s.status = 'vencendo'), '[]'::jsonb),
+
+    'events_next_7_days', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'title', e.title, 'team', t.name, 'type', e.type, 'date', e.date,
+               'time', to_char(e.time, 'HH24:MI'), 'location', nullif(e.location, ''),
+               'stage', e.stage, 'owner', nullif(e.owner, ''))
+             order by e.date, e.time nulls last)
+      from public.events e
+      join public.teams t on t.id = e.team_id
+      where e.stage <> 'done'
+        and e.date between public.local_today() and public.local_today() + 7), '[]'::jsonb),
+
+    'contracts_ending_90_days', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'team', v.name, 'contract_end', v.contract_end, 'days_left', v.days_to_contract_end)
+             order by v.contract_end)
+      from public.v_team_summary v
+      where v.days_to_contract_end between 0 and 90), '[]'::jsonb),
+
+    'teams', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'team', v.name, 'pct_done', v.pct_done,
+               'deliverables_late', v.deliverables_late, 'next_event', v.next_event,
+               'next_event_date', v.next_event_date))
+      from public.v_team_summary v), '[]'::jsonb)
+  );
+$$;
+
+revoke execute on function public.weekly_digest() from public, anon;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    grant execute on function public.weekly_digest() to authenticated;
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.weekly_digest() to service_role;
+  end if;
+end $$;
